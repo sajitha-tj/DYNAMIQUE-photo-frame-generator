@@ -48,6 +48,8 @@ name = "Sithum nimesh".upper()
 uni = "Sabaragamuwa University of Sri Lanka".upper()
 number = "DYN001".upper()
 
+errorFileList = []
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -59,7 +61,7 @@ numberFont = ImageFont.truetype(f'{dir_path}/fonts/Evil Empire.otf', 92)
 numberOfPhotos = 0
 
 for image in os.listdir(f'{dir_path}/photos'):
-    splitedName = image.split('.')[0].split(' - ')
+    splitedName = image.split('.jpg')[0].split('_')
 
     number = splitedName[0].upper()
     name = splitedName[1].upper()
@@ -67,14 +69,17 @@ for image in os.listdir(f'{dir_path}/photos'):
 
     numberOfPhotos += 1
 
-    # open the image
-    img = Image.open(f'{dir_path}/photos/{image}')
+    try:
+        # open the image
+        img = Image.open(f'{dir_path}/photos/{image}')
 
-    # if landscape
-    if img.size[0] > img.size[1]:
+        # if landscape
+        # if img.size[0] > img.size[1]:
         photoframe = Image.open(f'{dir_path}/imgs/pFrame.png')
-        fw, fh = photoframe.size
         iw, ih = img.size
+        fw, fh = photoframe.size
+
+        photoframe = photoframe.resize((iw, ih))
 
         # if img is bigger than photoFrame, crop it into the center
         # if iw > fw:
@@ -85,31 +90,51 @@ for image in os.listdir(f'{dir_path}/photos'):
         #     img = img.crop((left, top, right, bottom))
 
         # resize the image
-        img = img.resize((fw, fh))
+        # img = img.resize((fw, fh))
 
         # paste the frame on photo
         img.paste(photoframe, (0, 0), photoframe)
 
-    # open the BG
-    templateBG = Image.open(f'{dir_path}/imgs/frameBG.png')
-    tw, th = templateBG.size
+        # resize the image into the fw width with the same aspect ratio of img
+        if (iw > ih):
+            img = img.resize((fw, int((fw/iw)*ih)))
+        else:
+            img = img.resize((int((fh/ih)*iw), fh))
 
-    # paste the image on the center of template
-    templateBG.paste(img, (int((tw - fw)/2), 213))
+        inw, inh = img.size
 
-    # paste texts on the template
-    draw = ImageDraw.Draw(templateBG)
-    draw.text((int((tw - fw)/2), 805), name, (255, 255, 255), font=nameFont)
-    uni = getUniName(uni)
-    draw.text((int((tw - fw)/2), 857), uni, (255, 255, 255), font=uniFont)
+        # open the BG
+        templateBG = Image.open(f'{dir_path}/imgs/frameBG.png')
+        tw, th = templateBG.size
 
-    numberWidth = draw.textlength(number, font=numberFont)
-    draw.text(((int((tw - fw)/2)+fw)-numberWidth, 805),
-              number, (248, 237, 1), font=numberFont)
+        # paste the image on the center of template
+        templateBG.paste(img, (int((tw - inw)/2), 213))
 
-    # save the image
-    templateBG.save(f'{dir_path}/output/image-{number}.png')
+        # paste texts on the template
+        draw = ImageDraw.Draw(templateBG)
+        draw.text((int((tw - fw)/2), 805), name,
+                  (255, 255, 255), font=nameFont)
+        uni = getUniName(uni)
+        draw.text((int((tw - fw)/2), 857), uni, (255, 255, 255), font=uniFont)
 
-    print(f'image{numberOfPhotos} done!')
+        numberWidth = draw.textlength(number, font=numberFont)
+        draw.text(((int((tw - fw)/2)+fw)-numberWidth, 805),
+                  number, (248, 237, 1), font=numberFont)
+
+        # save the image
+        templateBG.save(f'{dir_path}/output/image-{number}.png')
+
+        print(f'image{numberOfPhotos} done!')
+
+    except:
+        print(f'Error in photo number {number} by {name}')
+        errorFileList.append(f'{number}_{name}_{uni}.jpg')
+        continue
 
 print(f'\n\n{numberOfPhotos} photos created!')
+
+if len(errorFileList) > 0:
+    print(f'\n\n{len(errorFileList)} photos are not created due to errors!')
+    print('Error files are: ')
+    for file in errorFileList:
+        print(file)
